@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GembaFlow Pro | Encube Ethicals</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        #walk-overlay { display: none; }
+        #walk-overlay.active { display: flex; z-index: 2000; transition: all 0.3s ease; }
+        .card-corporate { border: 1px solid #e2e8f0; transition: all 0.2s; }
+        .card-corporate:hover { border-color: #3b82f6; transform: translateY(-2px); }
+        /* Sidebar Toggle Logic */
+        .sidebar-transition { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed { width: 80px !important; }
+        .sidebar-collapsed .logo-text, .sidebar-collapsed .nav-text, .sidebar-collapsed .user-info { display: none; }
+        .sidebar-collapsed .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+        html, body {
+            overflow: hidden; /* Prevents the whole page from scrolling */
+            height: 100%;
+        }
+        .scroll-area {
+            height: calc(100vh - 200px); /* Adjust based on header height */
+            overflow-y: auto;
+        }
+        /* Hide scrollbar for clean corporate look */
+        .scroll-area::-webkit-scrollbar { width: 0px; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen pb-24 lg:pb-0 font-sans text-slate-900 selection:bg-primary/20">
+
+    <div id="walk-overlay" class="fixed inset-0 bg-white flex-col animate-in fade-in duration-300">
+        <div class="p-4 lg:p-6 border-b flex justify-between items-center bg-slate-900 text-white">
+            <div class="flex items-center gap-4">
+                <button onclick="endWalk()" class="btn btn-ghost btn-circle text-white lg:hidden"><i data-lucide="chevron-left"></i></button>
+                <div>
+                    <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Live Session</span>
+                    <h2 id="active-walk-title" class="text-lg font-bold italic">Line Observation</h2>
+                </div>
+            </div>
+            <button onclick="completeCurrentWalk()" class="btn btn-success btn-sm lg:btn-md text-white px-8 font-bold">Finish Walk</button>
+        </div>
+        <div class="flex-1 p-6 lg:p-12 overflow-y-auto">
+            <div class="max-w-2xl mx-auto space-y-6">
+                <div class="p-5 bg-blue-50 border border-blue-100 rounded-2xl">
+                    <p class="text-[10px] font-black text-blue-400 uppercase mb-2 tracking-widest">Observation Instructions</p>
+                    <p id="active-walk-desc" class="text-blue-900 text-sm italic font-medium leading-relaxed"></p>
+                </div>
+                <input id="active-notes" class="textarea textarea-bordered w-full h-72 text-lg bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="Log real-time findings, deviations, or process improvements..."></input>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex">
+        <aside id="sidebar" class="sidebar-transition hidden lg:flex flex-col w-72 h-screen sticky top-0 bg-white border-r border-slate-200 p-6 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between mb-10">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="bg-white p-2 rounded-xl text-white shrink-0 border border-slate-100 flex items-center justify-center w-12 h-12">
+                        <img class="w-7 h-7 object-contain block mx-auto" src="/download-removebg-preview.png" alt="EncubeEthicals">
+                    </div>
+                    <div class="logo-text flex flex-col leading-tight whitespace-nowrap">
+                        <span class="text-xl font-black tracking-tight italic">GEMBA<span class="text-primary text-2xl">.</span></span>
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Encube Systems</span>
+                    </div>
+                </div>
+                <button onclick="toggleSidebar()" class="btn btn-ghost btn-sm btn-circle text-slate-400"><i data-lucide="panel-left-close" id="sidebar-icon"></i></button>
+            </div>
+            
+            <nav class="flex-1 space-y-2">
+                <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-link btn btn-ghost justify-start w-full gap-4 active-nav">
+                    <i data-lucide="grid" class="w-5 h-5 shrink-0"></i> <span class="nav-text font-bold">Dashboard</span>
+                </button>
+                <button onclick="switchView('schedule')" id="nav-schedule" class="nav-link btn btn-ghost justify-start w-full gap-4">
+                    <i data-lucide="calendar" class="w-5 h-5 shrink-0"></i> <span class="nav-text font-bold">Planning Log</span>
+                </button>
+                <button onclick="switchView('account')" id="nav-account" class="nav-link btn btn-ghost justify-start w-full gap-4">
+                    <i data-lucide="user" class="w-5 h-5 shrink-0"></i> <span class="nav-text font-bold">Account</span>
+                </button>
+            </nav>
+
+            <div class="mt-auto pt-6 border-t border-slate-100 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xs shrink-0">AD</div>
+                <div class="user-info overflow-hidden">
+                    <p class="text-xs font-black text-slate-800 truncate">Admin Account</p>
+                    <button onclick="location.reload()" class="text-[10px] font-bold text-error uppercase hover:underline">Logout</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-screen p-4 lg:p-10 max-w-7xl mx-auto w-full overflow-hidden">
+            <header class="flex flex-row sm:flex-row sm:items-center justify-between gap-6 mb-12">
+                <div>
+                    <h1 id="current-date" class="text-2xl lg:text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">...</h1>
+                    <p id="current-time" class="text-xs lg:text-sm text-slate-400 font-mono mt-3"></p>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button onclick="new_schedule_modal.showModal()" class="hidden sm:flex btn btn-primary px-8 rounded-2xl font-black shadow-lg shadow-primary/30 uppercase tracking-widest text-xs h-14">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i> New Entry
+                    </button>
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm min-w-[120px] text-right">
+                        <span class="block text-[10px] uppercase font-black text-slate-400 mb-1 tracking-widest">Total Logs</span>
+                        <span id="plan-count" class="text-3xl font-black text-slate-800">0</span>
+                    </div>
+                </div>
+            </header>
+
+            <section id="dashboard-view" class="view-section active">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-xl font-black text-slate-800 italic underline decoration-primary/20">Operational Focus</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="task-grid"></div>
+            </section>
+
+            <section id="schedule-view" class="view-section">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-xl font-black text-slate-800">System Logs</h2>
+                </div>
+                <div id="schedule-content"></div>
+            </section>
+
+            <section id="account-view" class="view-section">
+                <div class="max-w-md mx-auto bg-white border border-slate-200 rounded-3xl p-10 text-center shadow-sm">
+                    <div class="avatar placeholder mb-4">
+                        <div class="bg-primary text-primary-content rounded-full w-24"><span class="text-3xl font-black">AD</span></div>
+                    </div>
+                    <h2 class="text-2xl font-black mb-1 text-slate-800 italic">Encube Admin</h2>
+                    <p class="text-slate-400 font-bold mb-10 text-xs">admin.dev@encube.com</p>
+                    <button onclick="location.reload()" class="btn btn-error btn-outline btn-block h-14 rounded-2xl font-black uppercase tracking-widest">Logout Session</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <button onclick="new_schedule_modal.showModal()" class="lg:hidden fixed right-6 bottom-28 z-40 btn btn-primary btn-circle btn-lg shadow-2xl scale-110">
+        <i data-lucide="plus" class="w-8 h-8"></i>
+    </button>
+
+    <div class="btm-nav lg:hidden border-t bg-white h-24 shadow-2xl z-50">
+        <button onclick="switchView('dashboard')" id="btm-dashboard" class="active text-primary"><i data-lucide="grid"></i><span class="text-[10px] font-bold uppercase">Home</span></button>
+        <button onclick="switchView('schedule')" id="btm-schedule"><i data-lucide="list"></i><span class="text-[10px] font-bold uppercase">Log</span></button>
+        <button onclick="switchView('account')" id="btm-account"><i data-lucide="user"></i><span class="text-[10px] font-bold uppercase">Account</span></button>
+    </div>
+<dialog id="new_schedule_modal" class="modal modal-bottom sm:modal-middle backdrop-blur-sm">
+    <div class="modal-box bg-white p-0 rounded-t-3xl sm:rounded-xl shadow-2xl border border-slate-100 max-w-md overflow-hidden">
+        
+        <div class="px-6 py-4 border-b bg-slate-50/50 flex justify-between items-center h-16">
+            <div class="flex items-center gap-2">
+                <div class="bg-primary/10 p-1.5 rounded text-primary">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                </div>
+                <h3 class="font-black text-base text-slate-800 tracking-tight uppercase">New Schedule</h3>
+            </div>
+            <form method="dialog">
+                <button class="btn btn-xs btn-circle btn-ghost text-slate-400">✕</button>
+            </form>
+        </div>
+
+        <form id="schedule-form" class="p-6 space-y-4">
+            
+            <div class="form-control">
+                <label class="label-text text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Location / Line</label>
+                <input type="text" id="form-title" placeholder="Mixing Suite 4" 
+                       class="input input-bordered input-sm w-full bg-slate-50 font-bold border-slate-200 focus:bg-white" required />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label-text text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Date</label>
+                    <input type="date" id="form-date" class="input input-bordered input-sm w-full bg-slate-50 font-mono" required />
+                </div>
+                <div class="form-control">
+                    <label class="label-text text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Time</label>
+                    <input type="time" id="form-time" class="input input-bordered input-sm w-full bg-slate-50 font-mono" required />
+                </div>
+            </div>
+
+            <div class="form-control">
+                <label class="label-text text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Priority</label>
+                <select id="form-priority" class="select select-bordered select-sm w-full bg-slate-50 font-bold border-slate-200">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                </select>
+            </div>
+
+            <div class="form-control">
+                <label class="label-text text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Instructions</label>
+                <textarea id="form-desc" 
+                          class="textarea textarea-bordered w-full h-20 bg-slate-50 text-xs leading-relaxed border-slate-200 focus:bg-white" 
+                          placeholder="Observe line clearance and safety guards..."></textarea>
+            </div>
+
+            <div class="pt-2">
+                <button type="submit" class="btn btn-primary btn-block h-12 rounded-lg font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 group">
+                    <span>Confirm & Save</span>
+                    <i data-lucide="arrow-right" class="w-3 h-3 group-hover:translate-x-1 transition-transform"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+    <dialog id="details_modal" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box bg-white p-0 rounded-t-3xl sm:rounded-3xl">
+            <div id="details-content" class="p-8 pb-0"></div>
+            <div class="p-8 flex gap-2">
+                <form method="dialog" class="flex-1"><button class="btn btn-outline btn-block h-14 rounded-2xl font-bold">Close</button></form>
+                <button id="modal-start-btn" class="btn btn-primary flex-1 h-14 rounded-2xl font-bold">Start Walk</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        let tasks = JSON.parse(localStorage.getItem('gembaTasks_v3')) || [
+            { id: 1, title: 'Packing Line 1', date: '2026-04-18', time: '09:00', priority: 'High', status: 'Pending', desc: 'Focus on primary packaging seal integrity and belt speed.' }
+        ];
+
+        let activeTaskId = null;
+        function save() { localStorage.setItem('gembaTasks_v3', JSON.stringify(tasks)); }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebar-icon');
+            sidebar.classList.toggle('sidebar-collapsed');
+            
+            if (sidebar.classList.contains('sidebar-collapsed')) {
+                icon.setAttribute('data-lucide', 'panel-left-open');
+            } else {
+                icon.setAttribute('data-lucide', 'panel-left-close');
+            }
+            lucide.createIcons();
+        }
+
+        function switchView(view) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById(`${view}-view`).classList.add('active');
+            document.querySelectorAll('.nav-link, .btm-nav button').forEach(el => el.classList.remove('btn-active', 'bg-primary/10', 'text-primary', 'active'));
+            document.getElementById(`nav-${view}`)?.classList.add('btn-active', 'bg-primary/10', 'text-primary');
+            document.getElementById(`btm-${view}`)?.classList.add('active', 'text-primary');
+        }
+
+        function renderAll() {
+            const grid = document.getElementById('task-grid');
+            const scheduleContent = document.getElementById('schedule-content');
+            document.getElementById('plan-count').innerText = tasks.length;
+
+            grid.innerHTML = tasks.map(t => `
+                <div onclick="openDetails(${t.id})" class="card card-corporate bg-white p-6 cursor-pointer rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="badge ${t.priority === 'High' ? 'badge-error' : 'badge-warning'} text-white font-bold badge-xs">${t.priority}</span>
+                        <div class="text-[9px] font-black uppercase text-slate-300 font-mono">${t.status}</div>
+                    </div>
+                    <h3 class="font-black text-xl text-slate-800 leading-tight mb-2 italic underline decoration-primary/20">${t.title}</h3>
+                    <p class="text-xs text-slate-400 font-bold mb-4 font-mono">${t.date} | ${t.time}</p>
+                    <p class="text-xs text-slate-500 line-clamp-2 border-l-2 border-slate-100 pl-3 italic">${t.desc || 'No specific instructions logged.'}</p>
+                </div>
+            `).join('');
+
+            scheduleContent.innerHTML = `
+                <div class="hidden lg:block bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                    <table class="table">
+                        <thead class="bg-slate-50 text-slate-400 font-black uppercase text-[10px] tracking-widest">
+                            <tr><th>Location</th><th>Schedule</th><th>Priority</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>${tasks.map(t => `
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="font-bold text-slate-700 underline decoration-slate-200">${t.title}</td>
+                                <td class="font-mono text-xs">${t.date} | ${t.time}</td>
+                                <td><span class="badge badge-outline border-slate-200 text-[9px] font-black">${t.priority}</span></td>
+                                <td><button onclick="deleteTask(${t.id})" class="btn btn-ghost btn-xs text-error"><i data-lucide="trash-2"></i></button></td>
+                            </tr>
+                        `).join('')}</tbody>
+                    </table>
+                </div>
+                <div class="lg:hidden space-y-4">${tasks.map(t => `
+                    <div class="bg-white p-5 rounded-2xl border flex items-center justify-between">
+                        <div>
+                            <p class="text-[9px] font-black text-primary uppercase font-mono">${t.date} | ${t.time}</p>
+                            <h4 class="font-bold text-slate-800 italic underline decoration-primary/10">${t.title}</h4>
+                        </div>
+                        <button onclick="deleteTask(${t.id})" class="btn btn-ghost btn-sm text-slate-300"><i data-lucide="trash-2"></i></button>
+                    </div>
+                `).join('')}</div>`;
+            lucide.createIcons();
+        }
+
+        window.openDetails = function(id) {
+            const t = tasks.find(x => x.id === id);
+            activeTaskId = id;
+            document.getElementById('details-content').innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xs font-black uppercase text-primary tracking-widest">Walk Intelligence</span>
+                    <span class="badge badge-ghost text-[9px] font-bold uppercase font-mono">${t.status}</span>
+                </div>
+                <h2 class="text-3xl font-black mb-2 text-slate-800 italic underline decoration-primary/20">${t.title}</h2>
+                <p class="text-slate-400 font-bold mb-6 font-mono">${t.date} | ${t.time}</p>
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-slate-600 leading-relaxed italic">
+                    <strong>Instructions:</strong> ${t.desc || 'Proceed with standard safety and process observation.'}
+                </div>`;
+            document.getElementById('modal-start-btn').onclick = () => startWalk(t.title, t.desc);
+            details_modal.showModal();
+        };
+
+        function startWalk(title, desc) {
+            document.getElementById('active-walk-title').innerText = title;
+            document.getElementById('active-walk-desc').innerText = desc || "Standard observation parameters active.";
+            document.getElementById('walk-overlay').classList.add('active');
+            const t = tasks.find(x => x.id === activeTaskId);
+            if(t) t.status = 'In Progress';
+            save(); renderAll(); details_modal.close();
+        }
+
+        function endWalk() { document.getElementById('walk-overlay').classList.remove('active'); }
+        function completeCurrentWalk() {
+            const t = tasks.find(x => x.id === activeTaskId);
+            if(t) t.status = 'Completed';
+            save(); renderAll(); endWalk();
+            alert("Digital Observation saved to Encube Archives.");
+        }
+
+        document.getElementById('schedule-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            tasks.push({
+                id: Date.now(),
+                title: document.getElementById('form-title').value,
+                date: document.getElementById('form-date').value,
+                time: document.getElementById('form-time').value,
+                priority: document.getElementById('form-priority').value,
+                desc: document.getElementById('form-desc').value,
+                status: 'Pending'
+            });
+            save(); renderAll(); new_schedule_modal.close();
+            e.target.reset(); switchView('dashboard');
+        });
+
+        window.deleteTask = function(id) { 
+            if(confirm("Permanently remove this log?")) {
+                tasks = tasks.filter(t => t.id !== id); save(); renderAll(); 
+            }
+        };
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-date').innerText = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            document.getElementById('current-time').innerText = now.toLocaleTimeString();
+        }
+
+        setInterval(updateClock, 1000); updateClock(); renderAll();
+    </script>
+</body>
+</html>
