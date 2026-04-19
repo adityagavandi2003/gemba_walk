@@ -50,7 +50,27 @@
                     <p class="text-[10px] font-black text-blue-400 uppercase mb-2 tracking-widest">Observation Instructions</p>
                     <p id="active-walk-desc" class="text-blue-900 text-sm italic font-medium leading-relaxed"></p>
                 </div>
-                <input id="active-notes" class="textarea textarea-bordered w-full h-72 text-lg bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="Log real-time findings, deviations, or process improvements..."></input>
+                <input id="walk-dept" class="input input-bordered w-full" placeholder="Department">
+
+<select id="walk-unit-op" class="select select-bordered w-full">
+    <option disabled selected>Select Operation</option>
+    <option>Mixing & Granulation</option>
+    <option>Compression</option>
+    <option>Coating</option>
+    <option>Primary Packing</option>
+    <option>Secondary Packing</option>
+</select>
+
+<input id="walk-doc-ref" class="input input-bordered w-full" placeholder="Doc Ref No">
+
+<select id="walk-priority" class="select select-bordered w-full">
+    <option>Low</option>
+    <option>Medium</option>
+    <option>High</option>
+</select>
+
+<textarea id="active-notes" class="textarea textarea-bordered w-full h-40"
+placeholder="Enter observations"></textarea>
             </div>
         </div>
     </div>
@@ -99,9 +119,9 @@
                 </div>
                 
                 <div class="flex items-center gap-4">
-                    <button onclick="new_schedule_modal.showModal()" class="hidden sm:flex btn btn-primary px-8 rounded-2xl font-black shadow-lg shadow-primary/30 uppercase tracking-widest text-xs h-14">
+                    <!-- <button onclick="new_schedule_modal.showModal()" class="hidden sm:flex btn btn-primary px-8 rounded-2xl font-black shadow-lg shadow-primary/30 uppercase tracking-widest text-xs h-14">
                         <i data-lucide="plus-circle" class="w-5 h-5"></i> New Entry
-                    </button>
+                    </button> -->
                     <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm min-w-[120px] text-right">
                         <span class="block text-[10px] uppercase font-black text-slate-400 mb-1 tracking-widest">Total Logs</span>
                         <span id="plan-count" class="text-3xl font-black text-slate-800">0</span>
@@ -136,9 +156,9 @@
         </main>
     </div>
 
-    <button onclick="new_schedule_modal.showModal()" class="lg:hidden fixed right-6 bottom-28 z-40 btn btn-primary btn-circle btn-lg shadow-2xl scale-110">
+    <!-- <button onclick="new_schedule_modal.showModal()" class="lg:hidden fixed right-6 bottom-28 z-40 btn btn-primary btn-circle btn-lg shadow-2xl scale-110">
         <i data-lucide="plus" class="w-8 h-8"></i>
-    </button>
+    </button> -->
 
     <div class="btm-nav lg:hidden border-t bg-white h-24 shadow-2xl z-50">
         <button onclick="switchView('dashboard')" id="btm-dashboard" class="active text-primary"><i data-lucide="grid"></i><span class="text-[10px] font-bold uppercase">Home</span></button>
@@ -228,9 +248,38 @@
     </dialog>
 
     <script>
-        let tasks = JSON.parse(localStorage.getItem('gembaTasks_v3')) || [
-            { id: 1, title: 'Packing Line 1', date: '2026-04-18', time: '09:00', priority: 'High', status: 'Pending', desc: 'Focus on primary packaging seal integrity and belt speed.' }
+        const plannedTasks = [
+            {
+                id: 1,
+                title: 'Packing Line 1',
+                date: new Date().toLocaleDateString(),
+                time: '09:00',
+                priority: 'High',
+                status: 'Pending',
+                desc: 'Check sealing, rejection and labeling'
+            },
+            {
+                id: 2,
+                title: 'Compression Area',
+                date: new Date().toLocaleDateString(),
+                time: '11:00',
+                priority: 'Medium',
+                status: 'Pending',
+                desc: 'Tablet weight variation and hardness'
+            },
+            {
+                id: 3,
+                title: 'Coating Section',
+                date: new Date().toLocaleDateString(),
+                time: '14:00',
+                priority: 'Low',
+                status: 'Pending',
+                desc: 'Uniform coating and drying parameters'
+            }
         ];
+
+        // Load from localStorage OR fallback to planned tasks
+        let tasks = JSON.parse(localStorage.getItem('gembaTasks_v3')) || plannedTasks;
 
         let activeTaskId = null;
         function save() { localStorage.setItem('gembaTasks_v3', JSON.stringify(tasks)); }
@@ -261,8 +310,14 @@
             const scheduleContent = document.getElementById('schedule-content');
             document.getElementById('plan-count').innerText = tasks.length;
 
-            grid.innerHTML = tasks.map(t => `
-                <div onclick="openDetails(${t.id})" class="card card-corporate bg-white p-6 cursor-pointer rounded-2xl">
+            const today = new Date().toLocaleDateString();
+
+            const todaysTasks = tasks.filter(t =>
+                t.date === today && t.status !== 'Completed'
+            );
+
+            grid.innerHTML = todaysTasks.map(t => `
+                <div onclick="startWalkById(${t.id})" class="card card-corporate bg-white p-6 cursor-pointer rounded-2xl">
                     <div class="flex justify-between items-center mb-4">
                         <span class="badge ${t.priority === 'High' ? 'badge-error' : 'badge-warning'} text-white font-bold badge-xs">${t.priority}</span>
                         <div class="text-[9px] font-black uppercase text-slate-300 font-mono">${t.status}</div>
@@ -301,43 +356,6 @@
             lucide.createIcons();
         }
 
-        window.openDetails = function(id) {
-            const t = tasks.find(x => x.id === id);
-            activeTaskId = id;
-            
-            document.getElementById('details-content').innerHTML = `
-                <div class="flex justify-between items-center mb-6">
-                    <span class="text-[10px] font-black uppercase text-primary tracking-widest italic">Encube Compliance Intelligence</span>
-                    <span class="badge badge-ghost text-[9px] font-black uppercase font-mono border-slate-200">${t.status}</span>
-                </div>
-
-                <h2 class="text-3xl font-black mb-1 text-slate-800 italic underline decoration-primary/20">${t.title}</h2>
-                <p class="text-slate-400 font-bold mb-6 text-xs uppercase tracking-tighter">Gemba Performed in ${t.title} Dept.</p>
-
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Unit Operation</p>
-                        <p class="text-sm font-bold text-slate-700">${t.unitOp || 'N/A'}</p>
-                    </div>
-                    <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Doc Reference</p>
-                        <p class="text-sm font-mono font-bold text-primary">${t.docRef || 'N/A'}</p>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Observation / Focus</label>
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 text-slate-600 leading-relaxed italic text-sm shadow-inner min-h-[80px]">
-                        ${t.desc || 'Proceed with standard safety and process observation protocol.'}
-                    </div>
-                </div>
-            `;
-
-            // Connect the Start button to the specific task data
-            document.getElementById('modal-start-btn').onclick = () => startWalk(t.title, t.desc);
-            
-            details_modal.showModal();
-        };
 
         function startWalk(title, desc) {
             document.getElementById('active-walk-title').innerText = title;
@@ -351,9 +369,21 @@
         function endWalk() { document.getElementById('walk-overlay').classList.remove('active'); }
         function completeCurrentWalk() {
             const t = tasks.find(x => x.id === activeTaskId);
-            if(t) t.status = 'Completed';
-            save(); renderAll(); endWalk();
-            alert("Digital Observation saved to Encube Archives.");
+
+            if (t) {
+                t.status = 'Completed';
+                t.dept = document.getElementById('walk-dept').value;
+                t.unitOp = document.getElementById('walk-unit-op').value;
+                t.docRef = document.getElementById('walk-doc-ref').value;
+                t.priority = document.getElementById('walk-priority').value;
+                t.notes = document.getElementById('active-notes').value;
+            }
+
+            save();
+            renderAll();
+            endWalk();
+
+            alert("Gemba Walk Submitted Successfully");
         }
 
         document.getElementById('schedule-form').addEventListener('submit', (e) => {
@@ -387,6 +417,20 @@
                 tasks = tasks.filter(t => t.id !== id); save(); renderAll(); 
             }
         };
+
+        function startWalkById(id) {
+            const t = tasks.find(x => x.id === id);
+            activeTaskId = id;
+
+            document.getElementById('active-walk-title').innerText = t.title;
+            document.getElementById('active-walk-desc').innerText = t.desc || '';
+
+            document.getElementById('walk-overlay').classList.add('active');
+
+            t.status = 'In Progress';
+            save();
+            renderAll();
+        }
 
         function updateClock() {
             const now = new Date();
